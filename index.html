@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Search</title>
+    <style>
+        /* CSS for list view */
+        #results.list-view li {
+            display: flex;
+            align-items: center;
+            margin: 10px;
+        }
+
+        #results.list-view img {
+            max-width: 150px;
+            height: auto;
+            margin-right: 10px;
+        }
+
+        #results.list-view h2 {
+            margin: 0;
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        /* CSS for grid view */
+        #results.grid-view {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        #results.grid-view li {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #results.grid-view img {
+            max-width: 150px;
+            height: auto;
+        }
+
+        /* CSS for dropdown menu */
+        #searchBar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #searchInput {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Movie Search</h1>
+    <div id="searchBar">
+        <select id="searchType">
+            <option value="movie">Search by Title</option>
+            <option value="director">Search by Director</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="Enter a movie title or director's name">
+        <button id="searchButton">Search</button>
+        <button id="toggleViewButton">Toggle View</button>
+    </div>
+
+    <ul id="results" class="list-view"></ul>
+
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Your custom script -->
+    <script>
+        $(document).ready(function() {
+            // Replace 'YOUR_API_KEY' with your actual Movie Database API key
+            const apiKey = '4efff1cfcb59bce8e0d8d304c4935734';
+
+            // URL for searching movies based on a query
+            const searchMovieUrl = 'https://api.themoviedb.org/3/search/movie';
+            const searchDirectorUrl = 'https://api.themoviedb.org/3/search/person';
+
+            // Function to perform the movie search
+            function searchMovies(query, searchType) {
+                const params = {
+                    api_key: apiKey,
+                    query: query
+                };
+
+                const searchUrl = searchType === 'director' ? searchDirectorUrl : searchMovieUrl;
+
+                $.getJSON(searchUrl, params, function(data) {
+                    // Clear previous results
+                    $('#results').empty();
+
+                    // Check if any results were returned
+                    if (data.results && data.results.length > 0) {
+                        const gridView = $('#results').hasClass('grid-view');
+
+                        // Loop through the results and display the movie poster and title
+                        data.results.forEach(function(result) {
+                            if (searchType === 'director') {
+                                // For director search, display director's name, profile picture, and movies they have directed
+                                const directorName = result.name;
+                                const knownForMovies = result.known_for_department === 'Directing' ? result.known_for : [];
+                                const profilePath = result.profile_path ? `https://image.tmdb.org/t/p/w185/${result.profile_path}` : 'no-image-available.jpg';
+
+                                // Create a div for the director's section
+                                let directorDiv = `<div class="director-section">
+                                    <img class="director-image" src="${profilePath}" alt="${directorName}">
+                                    <div class="director-details">
+                                        <h2>${directorName}</h2>
+                                    </div>
+                                </div>`;
+
+                                // Create a div for the movies section
+                                let moviesDiv = `<div class="movies-section">`;
+
+                                if (knownForMovies.length > 0) {
+                                    moviesDiv += '<h3>Known For:</h3><ul>';
+
+                                    // Add the known for movies to the list
+                                    knownForMovies.forEach(function(movie) {
+                                        const posterPath = movie.poster_path ? `https://image.tmdb.org/t/p/w185/${movie.poster_path}` : 'no-image-available.jpg';
+                                        moviesDiv += `<li>
+                                            <img src="${posterPath}" alt="${movie.title}">
+                                            <h4>${movie.title}</h4>
+                                        </li>`;
+                                    });
+
+                                    moviesDiv += '</ul>';
+                                } else {
+                                    moviesDiv += '<p>No movies found for this director.</p>';
+                                }
+
+                                moviesDiv += '</div>';
+
+                                // Append the director's and movies sections to the results
+                                $('#results').append(directorDiv + moviesDiv);
+                            } else {
+                                // For movie search, display the movie poster and title
+                                const posterPath = result.poster_path ? `https://image.tmdb.org/t/p/w185/${result.poster_path}` : 'no-image-available.jpg';
+                                const listItem = gridView ? 
+                                `<li>
+                                    <h2>${result.title}</h2>
+                                    <img src="${posterPath}" alt="${result.title}">
+                                </li>` : 
+                                `<li>
+                                    <img src="${posterPath}" alt="${result.title}">
+                                    <h2>${result.title}</h2>
+                                </li>`;
+                                
+                                $('#results').append(listItem);
+                            }
+                        });
+                    } else {
+                        $('#results').html('<div>No movies found.</div>');
+                    }
+                }).fail(function() {
+                    $('#results').html('<div>Error fetching data.</div>');
+                });
+            }
+
+            // Handle the search button click event
+            $('#searchButton').click(function() {
+                const searchTerm = $('#searchInput').val().trim();
+                const searchType = $('#searchType').val();
+                if (searchTerm) {
+                    searchMovies(searchTerm, searchType);
+                }
+            });
+
+            // Handle the enter key press event in the search input
+            $('#searchInput').keypress(function(event) {
+                if (event.keyCode === 13) {
+                    const searchTerm = $('#searchInput').val().trim();
+                    const searchType = $('#searchType').val();
+                    if (searchTerm) {
+                        searchMovies(searchTerm, searchType);
+                    }
+                }
+            });
+
+            // Handle the toggle view button click event
+            $('#toggleViewButton').click(function() {
+                $('#results').toggleClass('grid-view');
+                const searchTerm = $('#searchInput').val().trim();
+                const searchType = $('#searchType').val();
+                if (searchTerm) {
+                    searchMovies(searchTerm, searchType);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
