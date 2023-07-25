@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Search</title>
+    <style>
+        /* CSS for list view */
+        #results.list-view li {
+            display: flex;
+            align-items: center;
+            margin: 10px;
+        }
+
+        #results.list-view img {
+            max-width: 150px;
+            height: auto;
+            margin-right: 10px;
+        }
+
+        #results.list-view h2 {
+            margin: 0;
+            flex: 1;
+            margin-left: 10px;
+        }
+
+        /* CSS for grid view */
+        #results.grid-view {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        #results.grid-view li {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #results.grid-view img {
+            max-width: 150px;
+            height: auto;
+        }
+
+        /* CSS for dropdown menu */
+        #searchBar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #searchInput {
+            margin-right: 10px;
+        }
+
+        /* CSS for popular movies grid view */
+        #popularMovies.grid-view {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-gap: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        #popularMovies.grid-view .popular-movie {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #popularMovies.grid-view img {
+            max-width: 150px;
+            height: auto;
+        }
+
+        /* CSS for book search section */
+        .book-search-section {
+            background-color: lightblue;
+        }
+
+        /* CSS for popular movies section */
+        .popular-movies-section {
+            background-color: lightyellow;
+        }
+
+        .movie-details-section {
+            background-color: lightgreen;
+        }
+
+
+    </style>
+</head>
+<body>
+    <h1>Movie Search</h1>
+    <div id="searchBar" class="book-search-section">
+        <select id="searchType">
+            <option value="movie">Search by Title</option>
+            <option value="director">Search by Director</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="Enter a movie title or director's name">
+        <button id="searchButton">Search</button>
+        <button id="toggleViewButton">Toggle View</button>
+    </div>
+
+    <ul id="results" class="list-view book-search-section"></ul>
+
+    <center> <h2 class="popular-movies-section">Most Popular Movies This Month</h2> </center> 
+    <div id="popularMovies" class="list-view popular-movies-section"></div> <!-- New section to display popular movies -->
+
+    <!-- New div for displaying detailed movie data -->
+    <div id="ironManDetails" class="movie-details-section"></div>
+
+    <div id="robertDowneyJrDetails" class="actor-details-section"></div>
+
+    <!-- Include jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Your custom script -->
+    <script>
+        $(document).ready(function() {
+            // Replace 'YOUR_API_KEY' with your actual Movie Database API key
+            const apiKey = '4efff1cfcb59bce8e0d8d304c4935734';
+
+            // URL for searching movies based on a query
+            const searchMovieUrl = 'https://api.themoviedb.org/3/search/movie';
+            const searchDirectorUrl = 'https://api.themoviedb.org/3/search/person';
+
+            // Function to perform the movie search
+            function searchMovies(query, searchType) {
+                const params = {
+                    api_key: apiKey,
+                    query: query
+                };
+
+                const searchUrl = searchType === 'director' ? searchDirectorUrl : searchMovieUrl;
+
+                $.getJSON(searchUrl, params, function(data) {
+                    $('#results').empty(); // Clear previous results
+
+                    if (data.results && data.results.length > 0) {
+                        const gridView = $('#results').hasClass('grid-view');
+
+                        data.results.forEach(function(result) {
+                            if (searchType === 'director') {
+                                const directorName = result.name;
+                                const knownForMovies = result.known_for_department === 'Directing' ? result.known_for : [];
+                                const profilePath = result.profile_path ? `https://image.tmdb.org/t/p/w185/${result.profile_path}` : 'no-image-available.jpg';
+
+                                let directorDiv = `<div class="director-section">
+                                    <img class="director-image" src="${profilePath}" alt="${directorName}">
+                                    <div class="director-details">
+                                        <h2>${directorName}</h2>
+                                    </div>
+                                </div>`;
+
+                                let moviesDiv = `<div class="movies-section">`;
+
+                                if (knownForMovies.length > 0) {
+                                    moviesDiv += '<h3>Known For:</h3><ul>';
+
+                                    knownForMovies.forEach(function(movie) {
+                                        const posterPath = movie.poster_path ? `https://image.tmdb.org/t/p/w185/${movie.poster_path}` : 'no-image-available.jpg';
+                                        moviesDiv += `<li>
+                                            <img src="${posterPath}" alt="${movie.title}">
+                                            <h4>${movie.title}</h4>
+                                        </li>`;
+                                    });
+
+                                    moviesDiv += '</ul>';
+                                } else {
+                                    moviesDiv += '<p>No movies found for this director.</p>';
+                                }
+
+                                moviesDiv += '</div>';
+
+                                $('#results').append(directorDiv + moviesDiv);
+                            } else {
+                                const posterPath = result.poster_path ? `https://image.tmdb.org/t/p/w185/${result.poster_path}` : 'no-image-available.jpg';
+                                const listItem = gridView ?
+                                    `<li>
+                                        <h2>${result.title}</h2>
+                                        <img src="${posterPath}" alt="${result.title}">
+                                    </li>` :
+                                    `<li>
+                                        <img src="${posterPath}" alt="${result.title}">
+                                        <h2>${result.title}</h2>
+                                    </li>`;
+
+                                $('#results').append(listItem);
+                            }
+                        });
+                    } else {
+                        $('#results').html('<div>No movies found.</div>');
+                    }
+                }).fail(function() {
+                    $('#results').html('<div>Error fetching data.</div>');
+                });
+            }
+
+            // Function to fetch and display the most popular movies
+            function displayPopularMovies() {
+                const popularMoviesUrl = 'https://api.themoviedb.org/3/movie/popular';
+
+                const params = {
+                    api_key: apiKey,
+                };
+
+                $.getJSON(popularMoviesUrl, params, function(data) {
+                    $('#popularMovies').empty(); // Clear previous popular movies
+
+                    if (data.results && data.results.length > 0) {
+                        const gridView = $('#popularMovies').hasClass('grid-view');
+
+                        data.results.forEach(function(movie) {
+                            const posterPath = movie.poster_path ? `https://image.tmdb.org/t/p/w185/${movie.poster_path}` : 'no-image-available.jpg';
+                            const listItem = gridView ?
+                                `<div class="popular-movie grid-view">
+                                    <img src="${posterPath}" alt="${movie.title}">
+                                    <h3>${movie.title}</h3>
+                                </div>` :
+                                `<div class="popular-movie list-view">
+                                    <h3>${movie.title}</h3>
+                                    <img src="${posterPath}" alt="${movie.title}">
+                                </div>`;
+
+                            $('#popularMovies').append(listItem);
+                        });
+                    } else {
+                        $('#popularMovies').html('<div>No popular movies found.</div>');
+                    }
+                }).fail(function() {
+                    $('#popularMovies').html('<div>Error fetching popular movies data.</div>');
+                });
+            }
+
+            // Call the function to display popular movies when the page loads
+            displayPopularMovies();
+
+            function displayIronManDetails() {
+                const ironManId = 1726; // The Movie Database ID for "Iron Man"
+
+                const movieDetailsUrl = `https://api.themoviedb.org/3/movie/${ironManId}`;
+                const castUrl = `https://api.themoviedb.org/3/movie/${ironManId}/credits`;
+                const reviewUrl = `https://api.themoviedb.org/3/movie/${ironManId}/reviews`;
+                const params = {
+                    api_key: apiKey,
+                };
+
+                // Fetch movie details
+                $.getJSON(movieDetailsUrl, params, function(data) {
+                    $('#ironManDetails').empty(); // Clear previous movie data
+
+                    if (data) {
+                        const posterPath = data.poster_path ? `https://image.tmdb.org/t/p/w185/${data.poster_path}` : 'no-image-available.jpg';
+
+                        let movieDetailsDiv = `<div class="movie-details">
+                            <h2>${data.title}</h2>
+                            <img src="${posterPath}" alt="${data.title}">
+                            <p><strong>Release Date:</strong> ${data.release_date}</p>
+                            <p><strong>Overview:</strong> ${data.overview}</p>
+                            <p><strong>Runtime:</strong> ${data.runtime} minutes</p>
+                            <!-- Add more movie data here as needed -->
+                        </div>`;
+
+                        $('#ironManDetails').append(movieDetailsDiv);
+
+                        // Fetch cast data
+                        $.getJSON(castUrl, params, function(castData) {
+                            if (castData.cast && castData.cast.length > 0) {
+                                let castDiv = `<div class="movie-cast">
+                                    <h3>Cast:</h3>
+                                    <ul>`;
+                                
+                                castData.cast.slice(0, 5).forEach(function(actor) {
+                                    castDiv += `<li>${actor.name}</li>`;
+                                });
+
+                                castDiv += `</ul></div>`;
+                                $('#ironManDetails').append(castDiv);
+                            }
+                        }).fail(function() {
+                            $('#ironManDetails').append('<div>Error fetching cast data.</div>');
+                        });
+
+                        // Fetch review data
+                        $.getJSON(reviewUrl, params, function(reviewData) {
+                            if (reviewData.results && reviewData.results.length > 0) {
+                                const review = reviewData.results[0]; // We'll show the first review if available
+                                const reviewContent = review.content;
+                                const reviewAuthor = review.author;
+                                const reviewDiv = `<div class="movie-review">
+                                    <h3>Review:</h3>
+                                    <p>${reviewContent}</p>
+                                    <p><em>Review by: ${reviewAuthor}</em></p>
+                                </div>`;
+                                $('#ironManDetails').append(reviewDiv);
+                            }
+                        }).fail(function() {
+                            $('#ironManDetails').append('<div>Error fetching review data.</div>');
+                        });
+                    } else {
+                        $('#ironManDetails').html('<div>Movie data not found.</div>');
+                    }
+                }).fail(function() {
+                    $('#ironManDetails').html('<div>Error fetching movie data.</div>');
+                });
+            }
+
+            // Call the function to display detailed movie data for "Iron Man" when the page loads
+            displayIronManDetails();
+
+            function displayRobertDowneyJrDetails() {
+            const robertDowneyJrId = 3223; // The Movie Database ID for Robert Downey Jr.
+
+            const personDetailsUrl = `https://api.themoviedb.org/3/person/${robertDowneyJrId}`;
+            const movieCreditsUrl = `https://api.themoviedb.org/3/person/${robertDowneyJrId}/movie_credits`;
+            const params = {
+                api_key: apiKey,
+            };
+
+            // Fetch actor details
+            $.getJSON(personDetailsUrl, params, function(personData) {
+                $('#robertDowneyJrDetails').empty(); // Clear previous actor data
+
+                if (personData) {
+                    const profilePath = personData.profile_path ? `https://image.tmdb.org/t/p/w185/${personData.profile_path}` : 'no-image-available.jpg';
+
+                    let actorDetailsDiv = `<div class="actor-details">
+                        <h2>${personData.name}</h2>
+                        <img src="${profilePath}" alt="${personData.name}">
+                        <p><strong>Birthday:</strong> ${personData.birthday}</p>
+                        <p><strong>Place of Birth:</strong> ${personData.place_of_birth}</p>
+                        <!-- Add more actor data here as needed -->
+                    </div>`;
+
+                    $('#robertDowneyJrDetails').append(actorDetailsDiv);
+
+                    // Fetch movie credits
+                    $.getJSON(movieCreditsUrl, params, function(creditsData) {
+                        if (creditsData.cast && creditsData.cast.length > 0) {
+                            let creditsDiv = `<div class="actor-movie-credits">
+                                <h3>Movie Credits:</h3>
+                                <ul>`;
+                            
+                            creditsData.cast.slice(0, 5).forEach(function(movie) {
+                                creditsDiv += `<li>${movie.title} (${movie.release_date})</li>`;
+                            });
+
+                            creditsDiv += `</ul></div>`;
+                            $('#robertDowneyJrDetails').append(creditsDiv);
+                        }
+                    }).fail(function() {
+                        $('#robertDowneyJrDetails').append('<div>Error fetching movie credits data.</div>');
+                    });
+                } else {
+                    $('#robertDowneyJrDetails').html('<div>Actor data not found.</div>');
+                }
+            }).fail(function() {
+                $('#robertDowneyJrDetails').html('<div>Error fetching actor data.</div>');
+            });
+        }
+
+        // Call the function to display detailed information about Robert Downey Jr. when the page loads
+        displayRobertDowneyJrDetails();
+
+            // Function to toggle the view mode for both search results and popular movies
+            function toggleViewMode() {
+                const gridView = $('#results').hasClass('grid-view');
+                if (gridView) {
+                    $('#results').removeClass('grid-view').addClass('list-view');
+                    $('#popularMovies').removeClass('grid-view').addClass('list-view');
+                } else {
+                    $('#results').removeClass('list-view').addClass('grid-view');
+                    $('#popularMovies').removeClass('list-view').addClass('grid-view');
+                }
+            }
+
+            // Handle the search button click event
+            $('#searchButton').click(function() {
+                const searchTerm = $('#searchInput').val().trim();
+                const searchType = $('#searchType').val();
+                if (searchTerm) {
+                    searchMovies(searchTerm, searchType);
+                }
+            });
+
+            // Handle the enter key press event in the search input
+            $('#searchInput').keypress(function(event) {
+                if (event.keyCode === 13) {
+                    const searchTerm = $('#searchInput').val().trim();
+                    const searchType = $('#searchType').val();
+                    if (searchTerm) {
+                        searchMovies(searchTerm, searchType);
+                    }
+                }
+            });
+
+            // Handle the toggle view button click event for search results and popular movies
+            $('#toggleViewButton').click(function() {
+                toggleViewMode();
+                const searchTerm = $('#searchInput').val().trim();
+                const searchType = $('#searchType').val();
+                if (searchTerm) {
+                    searchMovies(searchTerm, searchType);
+                }
+                displayPopularMovies();
+            });
+        });
+    </script>
+</body>
+</html>
